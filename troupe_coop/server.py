@@ -102,16 +102,18 @@ class OrderResult(BaseModel):
 
 
 def _strip_label(requested: str) -> str:
-    """'Size: 8' -> '8', 'Unité: Troupe' -> 'Troupe' (the LLM sometimes sends the attribute name)."""
-    return requested.split(":", 1)[1].strip() if ":" in requested else requested.strip()
+    """'Size: 8' -> '8', 'Taille 8' -> '8', 'Unité: Troupe' -> 'Troupe' (the LLM sometimes sends the attribute name)."""
+    value = requested.split(":", 1)[1] if ":" in requested else requested
+    value = value.strip()
+    for prefix in ("size ", "taille ", "color ", "colour ", "couleur "):
+        if value.lower().startswith(prefix):
+            value = value[len(prefix):].strip()
+    return value
 
 
 def _match_value(requested: str, offered: list[str]) -> str | None:
     """Match "m", "Medium", "xs", "Size M" or "16" against the coop's labels."""
-    req = normalize(requested)
-    for prefix in ("size ", "taille ", "color ", "couleur "):
-        if req.startswith(prefix):
-            req = req[len(prefix):]
+    req = normalize(_strip_label(requested))
     req = normalize(SIZE_ALIASES.get(req, req))
     for value in offered:
         v = normalize(value)
@@ -209,7 +211,7 @@ def check_coop_item(
         str,
         Field(
             min_length=2,
-            description="Item name in French as listed by the coop, e.g. 'Chemise Troupe Kaki', 'Beret', 'Sifflet'. "
+            description="Item name in French as listed by the coop, e.g. 'Beret', 'Sifflet', 'Bague Foulard'. Use only the words the chef gave. "
             "Translate English requests first (shirt -> chemise, troop -> troupe, whistle -> sifflet).",
         ),
     ],
@@ -291,7 +293,7 @@ def record_ledger_entry(
 @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
 def process_member_order(
     member: Annotated[str, Field(description="Troupe member the item is for.")],
-    item: Annotated[str, Field(min_length=2, description="Coop item name in French, e.g. 'Chemise Troupe Kaki'.")],
+    item: Annotated[str, Field(min_length=2, description="Coop item name in French, e.g. 'Beret' or 'Bague Foulard'.")],
     variant: Annotated[list[str] | None, Field(description="Variant values such as ['M'] for size.")] = None,
     quantity: Annotated[int, Field(ge=1, le=20)] = 1,
     paid_now_usd: Annotated[float, Field(ge=0, le=1000, description="Cash the member handed over now (0 if paying later).")] = 0,

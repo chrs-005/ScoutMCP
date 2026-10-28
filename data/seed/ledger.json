@@ -14,13 +14,15 @@
       "member": "Jad Saliba",
       "type": "charge",
       "amount_usd": 15.0,
-      "description": "1 x Chemise Troupe Kaki (Size: M)",
+      "description": "1 x Short (Size: 14)",
       "item": {
-        "name": "Chemise Troupe Kaki",
-        "variant": {"Size": "M"},
+        "name": "Short",
+        "variant": {
+          "Size": "14"
+        },
         "quantity": 1,
         "unit_price_usd": 15.0,
-        "url": "https://coop.scoutsduliban.org/shop/chemise-troupe-kaki-1065"
+        "url": "https://coop.scoutsduliban.org/shop/short-1069"
       }
     },
     {
@@ -32,7 +34,9 @@
       "description": "1 x Beret (Size: 58)",
       "item": {
         "name": "Beret",
-        "variant": {"Size": "58"},
+        "variant": {
+          "Size": "58"
+        },
         "quantity": 1,
         "unit_price_usd": 5.0,
         "url": "https://coop.scoutsduliban.org/shop/beret-1073"

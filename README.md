@@ -76,7 +76,7 @@ Read-only views are exposed as **MCP resources** (`@mcp.resource`), not tools. T
 - `troupe://coop-order`: everything ordered, grouped by item and size, ready to bring to the coop (the coop takes cash only)
 - `troupe://members/{member}/statement`: one member's history
 
-The agent replies in the language the chef writes in (English, French or Arabizi). It keeps official coop item names in French and adds an English gloss when replying in English.
+The agent always replies in English. Only official coop item names stay in French (the coop's catalog language), with an English gloss, e.g. *Chemise Troupe Kaki (khaki troop shirt)*.
 
 ## Setup
 
@@ -109,7 +109,7 @@ In the chat, every MCP tool call (`-> agent calls MCP tool …`) and every serve
 - `Karim gave me 20$ in advance`
 - `Who still owes money?`
 - `What do I need to buy from the coop?`
-- `Combien coûte la chemise troupe ?` (ambiguous: the agent asks whether you mean Bleue or Kaki)
+- `How much is the chemise troupe?` (ambiguous: the agent asks whether you mean Bleue or Kaki)
 
 ## Tests
 

@@ -46,6 +46,8 @@ async def test_size_aliases_are_understood(fake_coop):
     assert r["status"] == "available" and r["variant"] == {"Size": "10"}
     r = (await call("check_coop_item", {"item": "Chemise Troupe Kaki", "variant": ["Size: 8"]})).structured_content
     assert r["status"] == "unavailable" and r["suggestions"] == ["10"]
+    r = (await call("check_coop_item", {"item": "Chemise Troupe Kaki", "variant": ["Taille 8"]})).structured_content
+    assert r["status"] == "unavailable" and r["suggestions"] == ["10"] and "'8'" in r["message"]
 
 
 async def test_size_not_offered_suggests_closest(fake_coop):

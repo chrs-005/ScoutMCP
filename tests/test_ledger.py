@@ -52,5 +52,5 @@ def test_balances_and_coop_order_summaries(data_dir):
     order = ledger.coop_order()
     assert order["total_items"] == 2
     assert order["total_usd"] == 20.0
-    kaki = next(line for line in order["lines"] if line["item"] == "Chemise Troupe Kaki")
-    assert kaki["variant"] == "Size: M" and kaki["for_members"] == {"Jad Saliba": 1}
+    short = next(line for line in order["lines"] if line["item"] == "Short")
+    assert short["variant"] == "Size: 14" and short["for_members"] == {"Jad Saliba": 1}

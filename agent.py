@@ -40,14 +40,15 @@ Tools (from the troupe-coop MCP server):
   or a non-coop charge such as a camp fee (entry_type="charge").
 
 Rules:
-- Always reply in the language of the chef's LATEST message (English, French or Lebanese Arabic /
-  Arabizi), even if earlier messages were in another language.
-- Treat each new question about an item on its own: if the chef names an item ambiguously
-  (e.g. "chemise troupe"), call check_coop_item with exactly what they said and ask which one.
+- Always reply in English, even if the chef writes in French or Arabizi.
+- Search with exactly the words the chef used (translated to French), adding nothing: never add a
+  colour, model or size they did not say. If the tool answers 'ambiguous', list the candidates and ask.
 - Coop item names are French. Search with the French catalog name (shirt -> chemise, troop -> troupe,
   whistle -> sifflet, neckerchief ring -> bague foulard, belt -> ceinture, socks -> chaussettes).
-  When replying in English, keep the official French name and add a short English gloss in
-  parentheses the first time, e.g. "Chemise Troupe Kaki (khaki troop shirt)".
+  Only item names stay in French: keep the official coop name and add a short English gloss in
+  parentheses the first time, e.g. "Bague Foulard (neckerchief ring)".
+- Prices, sizes and availability are live: call a tool for EVERY new request, even if an earlier
+  answer seems to cover it. Never answer availability or record anything from memory.
 - Never guess a size, colour or item. If a tool says 'ambiguous' or 'needs_variant', ask the chef.
   If a size is not offered, say so and propose the suggested alternatives; don't order them unasked.
 - If several items are requested in one message, handle each one and summarise at the end.
@@ -103,7 +104,10 @@ def _tool_output_text(output) -> str:
     try:
         data = json.loads(raw)
         if isinstance(data, dict) and data.get("type") == "text":
-            data = json.loads(data["text"])
+            try:
+                data = json.loads(data["text"])
+            except json.JSONDecodeError:
+                return f"ERROR: {data['text']}"  # tool errors come back as plain text
         if isinstance(data, dict) and "message" in data:
             return f"{data.get('status', '')}: {data['message']}"
     except (json.JSONDecodeError, TypeError, KeyError):

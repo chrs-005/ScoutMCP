@@ -28,8 +28,8 @@ Run `python agent.py`.
 > "The `->` lines are the agent calling a tool through the MCP client, `[MCP server]` is my server working, and `<-` is the result coming back. That's the full round trip."
 
 Type:
-1. `Combien coûte la chemise troupe ?`
-   - The agent answers in French and asks which shirt: Bleue or Kaki.
+1. `How much is the chemise troupe?`
+   - "There are two troupe shirts, so the data tool says 'ambiguous' and the agent asks me which one: Bleue or Kaki."
 2. `Jad needs a khaki troupe shirt in size 8, he gave me 10 dollars`
    - "Size 8 doesn't exist for this shirt. The tool suggests 10, and nothing was recorded."
 3. `ok size 10 then`
