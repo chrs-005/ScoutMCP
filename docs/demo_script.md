@@ -1,7 +1,7 @@
 # Screencast script (target: about 6 minutes)
 
 **Before recording:**
-- Run `python scripts/reset_demo.py`.
+- In the project folder, run `.venv\Scripts\activate`, then `python scripts/reset_demo.py`.
 - Open two terminals: one for `python agent.py`, one to show `data/ledger.json`.
 - Open VS Code on `troupe_coop/server.py`.
 - Increase the terminal font size.
@@ -34,15 +34,15 @@ Run `python agent.py`. Point at the cyan **-> agent calls MCP tool** lines, the 
 
 Type these one at a time:
 
-1. `Jad needs a khaki troupe shirt in size 8, he gave me 10 dollars`
-   - Expected: the agent translates the item to *Chemise Troupe Kaki* and calls `process_member_order`. The coop doesn't make that shirt in size 8, so it returns not_recorded, suggests size 10, and nothing is recorded.
+1. `Combien coûte la chemise troupe ?`
+   - Expected: the Data tool returns `ambiguous`. The agent answers in French and asks whether you mean *Bleue* or *Kaki*, both $15. Ask this first, before any shirt is mentioned, so the agent can't guess from context.
+2. `Jad needs a khaki troupe shirt in size 8, he gave me 10 dollars`
+   - Expected: the agent switches to English, translates the item to *Chemise Troupe Kaki* and calls `process_member_order`. The coop doesn't make that shirt in size 8, so it returns not_recorded, suggests size 10, and nothing is recorded.
    - Say: *"This is a real catalog gap. The kaki shirt starts at size 10."*
-2. `ok size 10 then`
-   - Expected: the order is recorded with the $10 payment. Jad already owed $15, so the reply should show the new balance.
-3. `Maya wants a beret size 59 and a bague foulard`
+3. `ok size 10 then`
+   - Expected: the order is recorded with the $10 payment. Jad already owed $15, so he now owes $20.
+4. `Maya wants a beret size 59 and a bague foulard`
    - Expected: two orders, both paid from Maya's $20 advance, leaving her with credit.
-4. `Combien coûte la chemise troupe ?`
-   - Expected: the agent answers in French and asks whether you mean *Bleue* or *Kaki* (the `ambiguous` status).
 5. `Ziad paid me 5$`
    - Expected: a clear error that Ziad isn't in the roster, with the member list (failure case).
 6. `Karim gave me 20 dollars in advance`
@@ -68,6 +68,7 @@ Run `pytest` (35 passing). Mention the tested failures:
 - **Keeping tools single-purpose under a three-tool limit.** "My first design had separate order and payment tools. I merged them into one ledger entry, a charge or a payment, which also handles paying in advance as credit. Read-only views became resources."
 - **Predictable failures.** "The data tool returns structured statuses (`unavailable`, `needs_variant`, `ambiguous`) with suggestions, so the agent asks me instead of guessing a size."
 - **French catalog.** "Item names are in French, so the agent translates before searching and keeps the official name in its answer."
+- **A bug only the live agent revealed.** "All my unit tests passed, but in the first live run the model sent the size as 'Size: 10' instead of '10', so even valid sizes were refused. I fixed the matching and added that exact case as a regression test. The lesson: tool inputs must tolerate how an LLM actually phrases things."
 - **My antivirus intercepting HTTPS.** "It broke pip and certificate checks. I used the OS certificate store through truststore and uv, without ever disabling TLS verification."
 
-> "The code is on GitHub at [link]. Next steps: managing members, marking items as received from the coop, and reminders for members who owe money. Thanks!"
+> "The code is on GitHub at github.com/chrs-005/ScoutMCP. Next steps: managing members, marking items as received from the coop, and reminders for members who owe money. Thanks!"
