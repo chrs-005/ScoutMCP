@@ -7,3 +7,6 @@ __pycache__/
 data/members.json
 data/ledger.json
 data/*.tmp
+# local screen recordings (the video is on YouTube)
+vid/
+*.mp4

@@ -1,4 +1,4 @@
-# Screencast script (target: 5:00 to 5:30; the assignment requires 5 to 7 minutes)
+# Screencast script (the assignment requires 5 to 7 minutes; recorded video: https://youtu.be/Yk7hFkNVe3c, 6:54)
 
 **Before recording:**
 - In the project folder, run `.venv\Scripts\activate`, then `python scripts/reset_demo.py`.

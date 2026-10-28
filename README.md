@@ -2,6 +2,8 @@
 
 **EECE 503P/798S Agentic Systems, C5: Agent Tools.** FastMCP server and OpenAI Agents SDK host.
 
+**Demo video:** https://youtu.be/Yk7hFkNVe3c
+
 ## Why this project
 
 I'm a scout chef (troupe leader) with Scouts du Liban, and this is a problem I have right now. Every few weeks, members need uniform pieces and gear from the SDL coop: a *Chemise Troupe Kaki* in size 12, a *Beret*, a *Bague Foulard*. I collect the requests, check what the coop actually stocks and in which sizes, look up prices, and then try to remember who paid in advance, who paid half, and who still owes me money.
@@ -21,7 +23,7 @@ Today that lives in WhatsApp messages and memory. This project turns it into an 
 | Configuration and setup instructions | this README ([Setup](#setup), [Run](#run)) |
 | Tests and example scripts, including failure cases | [tests/](tests/) (35 tests), [scripts/demo_tools.py](scripts/demo_tools.py) |
 | Live agent run (real transcript of the round trip) | [docs/example_session.md](docs/example_session.md) |
-| Screencast video (5-7 min) | **VIDEO LINK HERE** (script: [docs/demo_script.md](docs/demo_script.md), about 5 min) |
+| Screencast video (6:54) | **https://youtu.be/Yk7hFkNVe3c** (script: [docs/demo_script.md](docs/demo_script.md)) |
 | Reflection (2 paragraphs) | [docs/reflection.md](docs/reflection.md) |
 
 ### Requirements checklist
@@ -115,7 +117,7 @@ In the chat, every MCP tool call (`-> agent calls MCP tool …`) and every serve
 
 ```bash
 pytest                         # 35 offline tests: coop HTML parsing, ledger, all 3 tools + resources via a FastMCP client
-set RUN_LIVE=1 && pytest tests/test_live.py   # optional: hits the real coop site
+$env:RUN_LIVE=1; pytest tests/test_live.py    # optional, PowerShell: hits the real coop site (bash: RUN_LIVE=1 pytest tests/test_live.py)
 ```
 
 The offline tests use saved coop pages (`tests/fixtures/`), so they don't depend on the website. Failure cases covered:
@@ -144,6 +146,7 @@ tests/                    pytest suite + saved coop HTML fixtures
 docs/part1_summary.md     Part 1: MCP article + Fetch server critique
 docs/reflection.md        reflection
 docs/demo_script.md       screencast script
+docs/example_session.md   real transcript of a live agent run
 ```
 
 ## Design notes
