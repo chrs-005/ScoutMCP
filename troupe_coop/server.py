@@ -66,6 +66,14 @@ class ItemCheck(BaseModel):
     candidates: list[Candidate] = Field(default_factory=list, description="Possible items when the name was ambiguous.")
 
 
+class CoopItemRef(BaseModel):
+    name: str
+    variant: dict[str, str] = Field(default_factory=dict)
+    quantity: int = Field(ge=1)
+    unit_price_usd: float = Field(ge=0)
+    url: str | None = None
+
+
 class LedgerEntryResult(BaseModel):
     message: str
     entry_id: str
@@ -91,6 +99,11 @@ class OrderResult(BaseModel):
 
 
 # ----- variant matching ----------------------------------------------------
+
+
+def _strip_label(requested: str) -> str:
+    """'Size: 8' -> '8', 'Unité: Troupe' -> 'Troupe' (the LLM sometimes sends the attribute name)."""
+    return requested.split(":", 1)[1].strip() if ":" in requested else requested.strip()
 
 
 def _match_value(requested: str, offered: list[str]) -> str | None:
@@ -129,7 +142,7 @@ def _closest(requested: str, offered: list[str]) -> list[str]:
 def _check_variant(product: Product, requested: list[str]) -> ItemCheck:
     base = dict(item=product.name, url=product.url, unit_price_usd=product.price, options=product.attributes)
     chosen: dict[str, str] = {}
-    for value in requested:
+    for value in map(_strip_label, requested):
         matched = False
         for attr, offered in product.attributes.items():
             hit = _match_value(value, offered)
@@ -202,11 +215,11 @@ def check_coop_item(
     ],
     variant: Annotated[
         list[str] | None,
-        Field(description="Requested variant values, e.g. ['M'] for a size, or ['Troupe', 'Chef/Cheftaine']. Omit to list options."),
+        Field(description="Requested variant values only, e.g. ['M'] or ['10'] for a size, or ['Troupe', 'Chef/Cheftaine']. Omit to list options."),
     ] = None,
 ) -> ItemCheck:
-    """Look up one item in the live Scouts du Liban coop catalog and report its price and whether the
-    requested variant (size, color, unit...) is offered. Read-only: it never orders or changes anything.
+    """Answer one question from the live Scouts du Liban coop catalog: is this item offered in this
+    variant (size, color, unit...), and at what price? Read-only: it never orders or changes anything.
 
     status is one of: 'available', 'unavailable' (size/variant not offered or discontinued, with
     suggestions), 'needs_variant' (item has sizes/colors and none was given; options are listed),
@@ -235,9 +248,27 @@ def check_coop_item(
     return _check_variant(product, variant or [])
 
 
-def _record_entry(member: str, entry_type: str, amount_usd: float, description: str, item: dict | None = None) -> LedgerEntryResult:
-    """Shared implementation of the Action tool (the orchestration passes item metadata too)."""
+@mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False})
+def record_ledger_entry(
+    member: Annotated[str, Field(description="Troupe member name as in the roster (first name is enough if unique).")],
+    entry_type: Annotated[
+        Literal["charge", "payment"],
+        Field(description="'charge' = the member owes this amount; 'payment' = the chef received this amount from the member."),
+    ],
+    amount_usd: Annotated[float, Field(gt=0, le=1000, description="Amount in US dollars, greater than 0.")],
+    description: Annotated[str, Field(description="Short reason, e.g. 'Cash payment' or 'Camp fee'.")] = "",
+    coop_item: Annotated[
+        CoopItemRef | None,
+        Field(description="Coop item this charge is for. Filled in by process_member_order; leave empty otherwise."),
+    ] = None,
+) -> LedgerEntryResult:
+    """Write ONE entry (a charge or a payment) to a troupe member's account in the local ledger.
+    Returns the member's new balance. Use 'payment' when a member pays, late or in advance; use
+    'charge' for a cost that is not a coop item. For coop items use process_member_order.
+    Never contacts the coop."""
+    log.info("record_ledger_entry(member=%r, type=%s, amount=%s)", member, entry_type, amount_usd)
     ledger = Ledger()
+    item = coop_item.model_dump() if coop_item else None
     try:
         entry = ledger.add_entry(member, entry_type, amount_usd, description, item=item)
         balance = ledger.balance(entry["member"])
@@ -257,23 +288,6 @@ def _record_entry(member: str, entry_type: str, amount_usd: float, description: 
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False})
-def record_ledger_entry(
-    member: Annotated[str, Field(description="Troupe member name as in the roster (first name is enough if unique).")],
-    entry_type: Annotated[
-        Literal["charge", "payment"],
-        Field(description="'charge' = the member owes this amount; 'payment' = the chef received this amount from the member."),
-    ],
-    amount_usd: Annotated[float, Field(gt=0, le=1000, description="Amount in US dollars, greater than 0.")],
-    description: Annotated[str, Field(description="Short reason, e.g. 'Cash payment' or 'Camp fee'.")] = "",
-) -> LedgerEntryResult:
-    """Write ONE entry to a troupe member's account in the local ledger and return their new balance.
-    Use 'payment' when a member pays (late or in advance); use 'charge' for a cost that is not a coop
-    item. For coop items use process_member_order instead. Does not contact the coop."""
-    log.info("record_ledger_entry(member=%r, type=%s, amount=%s)", member, entry_type, amount_usd)
-    return _record_entry(member, entry_type, amount_usd, description)
-
-
 @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
 def process_member_order(
     member: Annotated[str, Field(description="Troupe member the item is for.")],
@@ -282,10 +296,11 @@ def process_member_order(
     quantity: Annotated[int, Field(ge=1, le=20)] = 1,
     paid_now_usd: Annotated[float, Field(ge=0, le=1000, description="Cash the member handed over now (0 if paying later).")] = 0,
 ) -> OrderResult:
-    """Handle a member's coop order end to end: (1) check the item, size and live price with
-    check_coop_item, (2) if available, charge the member price x quantity with record_ledger_entry,
-    (3) record any cash paid now as a payment. If the item/size is not available nothing is recorded
-    and the reason plus alternatives are returned."""
+    """Orchestration: handle a member's coop order by coordinating the other two tools in sequence.
+    (1) call check_coop_item for the item, size and live price; (2) if available, call
+    record_ledger_entry to charge the member price x quantity; (3) call record_ledger_entry again
+    for any cash paid now. If the item/size is not available nothing is recorded, and the reason
+    plus alternatives are returned."""
     log.info("process_member_order(member=%r, item=%r, variant=%r, qty=%s, paid_now=%s)", member, item, variant, quantity, paid_now_usd)
     ledger = Ledger()
     try:
@@ -308,17 +323,17 @@ def process_member_order(
 
     total = round(check.unit_price_usd * quantity, 2)
     label = f"{quantity} x {check.item}" + (f" ({_fmt_variant(check.variant)})" if check.variant else "")
-    item_meta = {
-        "name": check.item,
-        "variant": check.variant,
-        "quantity": quantity,
-        "unit_price_usd": check.unit_price_usd,
-        "url": check.url,
-    }
-    result = _record_entry(member_name, "charge", total, label, item=item_meta)
+    item_ref = CoopItemRef(
+        name=check.item,
+        variant=check.variant,
+        quantity=quantity,
+        unit_price_usd=check.unit_price_usd,
+        url=check.url,
+    )
+    result = record_ledger_entry(member_name, "charge", total, label, coop_item=item_ref)
     steps.append(f"record_ledger_entry(charge ${total:.2f}) -> {result.status}")
     if paid_now_usd > 0:
-        result = _record_entry(member_name, "payment", paid_now_usd, f"Paid when ordering {label}")
+        result = record_ledger_entry(member_name, "payment", paid_now_usd, f"Paid when ordering {label}")
         steps.append(f"record_ledger_entry(payment ${paid_now_usd:.2f}) -> {result.status}")
 
     return OrderResult(

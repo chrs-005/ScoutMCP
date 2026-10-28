@@ -54,7 +54,7 @@ Switch to the second terminal and open `data/ledger.json` to show the entries th
 
 ## 4. Tests and failure handling (4:45 to 5:30)
 
-Run `pytest` (34 passing). Mention the tested failures:
+Run `pytest` (35 passing). Mention the tested failures:
 - size not offered
 - discontinued variant
 - item not found

@@ -41,6 +41,11 @@ async def test_size_aliases_are_understood(fake_coop):
     assert r["variant"] == {"Size": "16 (XS)"}
     r = (await call("check_coop_item", {"item": "chaussettes", "variant": ["36-40"]})).structured_content
     assert r["status"] == "available" and r["variant"] == {"Size": "36-40 EU"}
+    # The LLM sometimes sends "Size: 10" instead of "10" (seen in a live run).
+    r = (await call("check_coop_item", {"item": "Chemise Troupe Kaki", "variant": ["Size: 10"]})).structured_content
+    assert r["status"] == "available" and r["variant"] == {"Size": "10"}
+    r = (await call("check_coop_item", {"item": "Chemise Troupe Kaki", "variant": ["Size: 8"]})).structured_content
+    assert r["status"] == "unavailable" and r["suggestions"] == ["10"]
 
 
 async def test_size_not_offered_suggests_closest(fake_coop):
@@ -116,6 +121,17 @@ async def test_order_with_partial_payment(data_dir, fake_coop):
     entries = [e for e in Ledger().entries() if e["member"] == "Karim Haddad"]
     assert [e["type"] for e in entries] == ["charge", "payment"]
     assert entries[0]["item"]["variant"] == {"Size": "S"}
+
+
+async def test_orchestration_calls_the_data_then_action_tool(data_dir, fake_coop, monkeypatch):
+    from troupe_coop import server
+
+    calls = []
+    real_check, real_record = server.check_coop_item, server.record_ledger_entry
+    monkeypatch.setattr(server, "check_coop_item", lambda *a, **k: calls.append("check_coop_item") or real_check(*a, **k))
+    monkeypatch.setattr(server, "record_ledger_entry", lambda *a, **k: calls.append("record_ledger_entry") or real_record(*a, **k))
+    server.process_member_order("Jad", "beret", ["58"], 1, 5)
+    assert calls == ["check_coop_item", "record_ledger_entry", "record_ledger_entry"]
 
 
 async def test_order_uses_advance_credit(data_dir, fake_coop):

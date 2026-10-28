@@ -1,23 +1,19 @@
-# Part 1: MCP Concepts and a Critique of the Fetch Server
+# Part 1 Summary: MCP and the Fetch Server
 
-**Source:** Ksenia Se, "What Is MCP, and Why Is Everyone – Suddenly! – Talking About It?" (Hugging Face / Turing Post, March 2025). **Server explored:** the official Fetch MCP server (`modelcontextprotocol/servers/src/fetch`).
+*Article: Ksenia Se, "What Is MCP, and Why Is Everyone Suddenly Talking About It?" (Hugging Face, 2025). Server explored: the official Fetch MCP server (source code read).*
 
 ## Key MCP concepts
 
-The article starts from a simple observation: language models are capable in isolation but cut off from the data and systems where useful context lives. Before MCP, every application wired up each data source with custom code, an N×M integration problem that made agents brittle. The Model Context Protocol, released by Anthropic in November 2024, replaces this with one open standard. Each application and each tool implements MCP once, turning N×M into N+M.
+Language models are powerful but isolated from the data and systems where useful context lives. Before MCP, each application needed custom code for each data source, an N×M integration problem that made agents brittle. The Model Context Protocol, released by Anthropic in November 2024, is one open standard: every application and every tool implements it once, turning N×M into N+M.
 
-The architecture has three roles. The **Host** is the AI application the user interacts with, such as Claude Desktop, an IDE, or in my project an OpenAI Agents SDK program. Inside the host, each **Client** keeps a one-to-one connection with a **Server**. A server wraps a tool or data source and exposes three primitives:
+MCP has three roles. The **Host** is the AI application the user interacts with, such as Claude Desktop, an IDE or an Agents SDK program. The host creates one **Client** per server, and each client keeps a one-to-one connection with a **Server**. The server wraps a tool or data source and exposes primitives: **tools** the model calls, **resources** the application reads as context, and **prompts**. Capabilities are discovered at runtime, so the host needs no hard-coded integration. The article frames MCP as the agent's integration layer, not its reasoning engine, and lists open problems: operational overhead, immature security, and tools that are only as good as their descriptions.
 
-- **Tools:** actions the model decides to call.
-- **Resources:** read-only data the application attaches as context.
-- **Prompts:** reusable templates.
+## Critique of the Fetch server
 
-Capabilities are discovered at runtime, so the host needs no hard-coded integration. The article positions MCP as the agent's integration layer, not its reasoning engine, and flags open problems: operational overhead, immature security, and tools that are only as useful as their descriptions.
+Fetch exposes one tool, `fetch(url, max_length, start_index, raw)`, plus a prompt. Judged by the three design principles from class:
 
-## The Fetch server
+- **Well-defined interface: strong.** Arguments are typed and bounded, and the tool is annotated as read-only.
+- **Predictable behavior: mostly strong.** A robots.txt refusal, an HTTP error or a private address returns a clear error, and `start_index` pagination bounds output size. However, the output is one unstructured string, with continuation hints written inside the text.
+- **Isolated, single-purpose functionality: weak.** One tool retrieves the page, enforces robots.txt, converts HTML to Markdown, and truncates. The `raw` flag switching behaviour is a sign of "fetch *and* convert".
 
-Fetch exposes one tool, `fetch(url, max_length=5000, start_index=0, raw=False)`, plus a matching prompt. Its interface is well defined. Arguments are typed and bounded (`max_length` must be between 1 and 999,999), and the tool is annotated as read-only and idempotent. Failures are predictable: a robots.txt refusal, an HTTP status of 400 or higher, or a private-network address each return a clear error, never empty content. Pagination through `start_index` also keeps output size under control.
-
-Judged by the design principles from class, however, `fetch` bundles several responsibilities. It retrieves the page, enforces a robots.txt policy, simplifies HTML to Markdown, and truncates and paginates the result. The `raw` flag switches between two behaviours, a boolean mode flag that hints at "fetch *and* convert". The output is also an unstructured string with continuation instructions embedded in the text, not structured fields.
-
-The bundling is still defensible: splitting conversion into a second tool would force large raw HTML through the model's context. Fetch shows good interface design and isolation (no side effects), trading single-purposeness for efficiency. I took that lesson into my own toolkit: keep each tool single-purpose with structured output, and do the combining in an explicit orchestration tool.
+The bundling is defensible, because splitting conversion into a second tool would push large raw HTML through the model's context. Still, it shows why single-purpose tools are preferred: they are easier for the model to choose, test and recombine. My toolkit follows that rule and combines tools only in an explicit orchestration tool.

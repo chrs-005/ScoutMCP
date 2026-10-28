@@ -11,6 +11,38 @@ Today that lives in WhatsApp messages and memory. This project turns it into an 
 > "Jad wants a khaki troupe shirt size 8, he gave me 10 dollars."
 > The agent checks the live coop catalog. Size 8 isn't made for that shirt, so it suggests size 10 and, once I confirm, records the order and the payment. Jad now owes $5.
 
+## Submission at a glance
+
+| Deliverable | Where |
+|---|---|
+| Written summary (Part 1: HF article + Fetch server critique, 371 words) | [docs/part1_summary.md](docs/part1_summary.md) |
+| FastMCP server module (3 tools + resources) | [troupe_coop/server.py](troupe_coop/server.py) |
+| OpenAI Agents SDK host/client | [agent.py](agent.py) |
+| Configuration and setup instructions | this README ([Setup](#setup), [Run](#run)) |
+| Tests and example scripts, including failure cases | [tests/](tests/) (35 tests), [scripts/demo_tools.py](scripts/demo_tools.py) |
+| Live agent run (real transcript of the round trip) | [docs/example_session.md](docs/example_session.md) |
+| Screencast video (5-7 min) | **VIDEO LINK HERE** (script: [docs/demo_script.md](docs/demo_script.md)) |
+| Reflection (2 paragraphs) | [docs/reflection.md](docs/reflection.md) |
+
+### Requirements checklist
+
+| Requirement from the assignment | How this project meets it |
+|---|---|
+| Exactly three tools: one Data, one Action, one Orchestration | `check_coop_item` (Data), `record_ledger_entry` (Action), `process_member_order` (Orchestration). `test_list_exactly_three_tools` checks the count. |
+| Data tool retrieves information without changing anything | Only GET requests to the coop catalog; annotated `readOnlyHint: true`. |
+| Action tool changes something | Appends a charge/payment entry to `data/ledger.json`. |
+| Orchestration tool coordinates the other two in sequence | Calls `check_coop_item`, then `record_ledger_entry` (charge), then `record_ledger_entry` (payment). `test_orchestration_calls_the_data_then_action_tool` proves the call order. |
+| Clear description, typed arguments, typed output for each tool | Docstrings + `Annotated[..., Field(description=...)]` arguments + Pydantic output models (`ItemCheck`, `LedgerEntryResult`, `OrderResult`). FastMCP publishes input and output schemas. |
+| Single-purpose tools | Each tool has one job. Combining happens only in the Orchestration tool. Balances and order summaries are resources, not extra tools. |
+| At least one predictable failure handled with a clear error | Several: item not found, coop site unreachable, unknown member, amount ≤ 0, size not offered, discontinued variant, ambiguous name. See [Tests](#tests). |
+| `@mcp.tool` for tools, `@mcp.resource` for pure data lookups | 3 `@mcp.tool`, 4 `@mcp.resource` (`troupe://members`, `troupe://balances`, `troupe://coop-order`, `troupe://members/{member}/statement`). |
+| Agents SDK agent as MCP Host/Client routing requests to the right tool | `agent.py`: `Agent(mcp_servers=[MCPServerStdio(...)])`. The model chooses the tool for each request; see [docs/example_session.md](docs/example_session.md). |
+| Unit tests or scripts for each tool, including the failure case | `tests/test_tools.py` (all 3 tools through a real FastMCP client), `tests/test_ledger.py`, `tests/test_coop_parsing.py`, `scripts/demo_tools.py`. |
+
+### Why single-purpose tools
+
+A tool that does one thing has a short, unambiguous description, so the model picks the right tool more reliably. Its failures are also easier to make predictable and to test in isolation. A tool that "checks the price **and** charges the member **and** records the payment" would hide three decisions inside one call. Here that sequence is an explicit Orchestration tool built from two single-purpose tools, and each of those tools stays usable on its own: a late payment is just `record_ledger_entry`.
+
 ## Architecture
 
 ```
@@ -82,7 +114,7 @@ In the chat, every MCP tool call (`-> agent calls MCP tool …`) and every serve
 ## Tests
 
 ```bash
-pytest                         # 34 offline tests: coop HTML parsing, ledger, all 3 tools + resources via a FastMCP client
+pytest                         # 35 offline tests: coop HTML parsing, ledger, all 3 tools + resources via a FastMCP client
 set RUN_LIVE=1 && pytest tests/test_live.py   # optional: hits the real coop site
 ```
 

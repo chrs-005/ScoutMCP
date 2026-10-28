@@ -1,26 +1,5 @@
 # Reflection
 
-I drew the lines between the three tools by asking what each one is allowed to touch.
+I drew the line between my three tools by asking what each one is allowed to touch. The Data tool, `check_coop_item`, may only read the coop website: it answers whether the coop sells an item in a given size, and at what price. The Action tool, `record_ledger_entry`, may only write to the troupe ledger, one charge or one payment per call, and never contacts the coop. The Orchestration tool, `process_member_order`, owns the business rule that connects them: it calls the Data tool first, and only if the item and size exist does it call the Action tool to charge the member, then again for any cash paid on the spot. The hardest boundary was payments. My first design had separate "record order" and "record payment" tools, which would have broken the three-tool limit and duplicated logic. Modelling both as entries in one append-only ledger kept the Action tool single-purpose, and it naturally handles both late payers (a positive balance) and members who pay in advance (credit). Read-only views such as balances, member statements and the consolidated coop order are pure lookups, so I exposed them as MCP resources, not extra tools. The agent host reads them as fresh context on every model call. Keeping each tool narrow paid off in testing: every failure case (size not offered, item not found, coop site down, unknown member, invalid amount) is isolated in one tool and returns a clear, structured error or status. The agent then asks me instead of guessing.
 
-- `check_coop_item` (Data) may only read the coop website. It answers one question: "does the coop sell this item in this size, and at what price?"
-- `record_ledger_entry` (Action) may only write to the troupe's ledger. It records a single charge or payment and never contacts the coop.
-- `process_member_order` (Orchestration) owns the business rule that connects them. It checks the item first, charges the member only if the item and size actually exist, and records any cash handed over on the spot.
-
-The hardest boundary was payments. My first instinct was separate `record_order` and `record_payment` tools, which would have broken the three-tool limit. Modelling both as entries in one append-only ledger kept the Action tool single-purpose ("write one entry") and handled both late payers and members who pay in advance, through a negative balance (credit). Read-only views such as balances, a member's statement and the consolidated coop order are pure lookups, so I exposed them as MCP resources, not extra tools. The host injects them as fresh context on every model call.
-
-Three tools felt right for the core loop a chef repeats every week: check, order, collect. The limit also forced cleaner designs. Real use, though, already pushes past three:
-
-- adding or removing members (I edit the roster file by hand for now)
-- marking items as received from the coop, so they leave the pending order
-- bulk orders for the whole troupe
-
-Matching items was also harder than expected. The catalog is in French, so the model has to translate requests like "khaki troop shirt" before searching. Ambiguous or size-less requests had to return structured `ambiguous` and `needs_variant` answers so the agent asks instead of guessing. On the infrastructure side, my antivirus intercepts HTTPS, which broke package installs and certificate checks. Using the operating system's certificate store (truststore) fixed this without disabling verification.
-
-Next steps:
-
-- the member and delivery tools above
-- reminder messages to members who owe money, sent only after the chef confirms
-- caching the full catalog for offline use at camp
-- supporting several units at the group level
-
-I deliberately left out submitting orders to the coop's website. That is an outward-facing action that should stay a human decision.
+Three tools felt right for the core loop I repeat every week as a chef: check, order, collect. The limit also forced cleaner designs than I would otherwise have chosen. Real use already pushes past three, though. I need to add or remove members (today I edit the roster file by hand), mark items as received from the coop so they leave the pending order, and place bulk orders for the whole troupe. Two practical challenges also shaped the design. The coop catalog is in French, so the model must translate requests like "khaki troop shirt" before searching. And my antivirus intercepts HTTPS, which I solved by using the operating system's certificate store rather than disabling verification. Next steps are those member and delivery tools, payment reminders sent only after I confirm them, a cached catalog for offline use at camp, and group-level support for several units. I deliberately left out submitting orders to the coop's website: that is an outward-facing action that should remain a human decision.
