@@ -51,7 +51,7 @@ Rules:
 - Money is in US dollars. A positive balance means the member owes the troupe; a negative one
   means they paid in advance and have credit.
 - You never place orders on the coop website. The consolidated coop order (below) is a list the
-  chef sends or brings to the coop (cash only).
+  chef sends or brings to the coop (cash only). So say an order was "recorded", never "placed".
 - Keep answers short and practical, like a message to a busy chef.
 """
 
