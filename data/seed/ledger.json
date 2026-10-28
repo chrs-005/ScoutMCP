@@ -1,0 +1,50 @@
+{
+  "entries": [
+    {
+      "id": "seed0001",
+      "timestamp": "2026-10-20T18:05:00",
+      "member": "Maya Khoury",
+      "type": "payment",
+      "amount_usd": 20.0,
+      "description": "Advance for uniform"
+    },
+    {
+      "id": "seed0002",
+      "timestamp": "2026-10-20T18:10:00",
+      "member": "Jad Saliba",
+      "type": "charge",
+      "amount_usd": 15.0,
+      "description": "1 x Chemise Troupe Kaki (Size: M)",
+      "item": {
+        "name": "Chemise Troupe Kaki",
+        "variant": {"Size": "M"},
+        "quantity": 1,
+        "unit_price_usd": 15.0,
+        "url": "https://coop.scoutsduliban.org/shop/chemise-troupe-kaki-1065"
+      }
+    },
+    {
+      "id": "seed0003",
+      "timestamp": "2026-10-20T18:12:00",
+      "member": "Lea Aoun",
+      "type": "charge",
+      "amount_usd": 5.0,
+      "description": "1 x Beret (Size: 58)",
+      "item": {
+        "name": "Beret",
+        "variant": {"Size": "58"},
+        "quantity": 1,
+        "unit_price_usd": 5.0,
+        "url": "https://coop.scoutsduliban.org/shop/beret-1073"
+      }
+    },
+    {
+      "id": "seed0004",
+      "timestamp": "2026-10-20T18:12:30",
+      "member": "Lea Aoun",
+      "type": "payment",
+      "amount_usd": 5.0,
+      "description": "Paid when ordering 1 x Beret (Size: 58)"
+    }
+  ]
+}

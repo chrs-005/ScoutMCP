@@ -1,0 +1,8 @@
+fastmcp>=4.1
+openai-agents>=0.24
+httpx>=0.28
+beautifulsoup4>=4.12
+truststore>=0.10
+python-dotenv>=1.0
+pytest>=8
+pytest-asyncio>=1.0

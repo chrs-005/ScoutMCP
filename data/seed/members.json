@@ -1,0 +1,14 @@
+{
+  "unit": "Troupe (demo) - Scouts du Liban",
+  "note": "Fictional members for the demo. Replace with your own roster.",
+  "members": [
+    {"name": "Karim Haddad", "patrol": "Aigles"},
+    {"name": "Maya Khoury", "patrol": "Aigles"},
+    {"name": "Jad Saliba", "patrol": "Aigles"},
+    {"name": "Lea Aoun", "patrol": "Aigles"},
+    {"name": "Rami Nassar", "patrol": "Panthères"},
+    {"name": "Nour Abi Khalil", "patrol": "Panthères"},
+    {"name": "Sara Daher", "patrol": "Panthères"},
+    {"name": "Marc Fares", "patrol": "Panthères"}
+  ]
+}

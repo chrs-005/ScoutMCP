@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+# live data (recreate with scripts/reset_demo.py); the demo seed is in data/seed/
+data/members.json
+data/ledger.json
+data/*.tmp

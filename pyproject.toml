@@ -1,0 +1,22 @@
+[project]
+name = "troupe-coop"
+version = "1.0.0"
+description = "MCP toolkit (FastMCP + OpenAI Agents SDK) for a Scouts du Liban troupe leader to manage members' coop orders and payments."
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=4.1",
+    "openai-agents>=0.24",
+    "httpx>=0.28",
+    "beautifulsoup4>=4.12",
+    "truststore>=0.10",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=1.0"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = ["live: hits the real coop website (run with RUN_LIVE=1)"]

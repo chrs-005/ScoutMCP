@@ -1,0 +1,122 @@
+# Troupe Coop Assistant: an MCP toolkit for a scout leader
+
+**EECE 503P/798S Agentic Systems, C5: Agent Tools.** FastMCP server and OpenAI Agents SDK host.
+
+## Why this project
+
+I'm a scout chef (troupe leader) with Scouts du Liban, and this is a problem I have right now. Every few weeks, members need uniform pieces and gear from the SDL coop: a *Chemise Troupe Kaki* in size 12, a *Beret*, a *Bague Foulard*. I collect the requests, check what the coop actually stocks and in which sizes, look up prices, and then try to remember who paid in advance, who paid half, and who still owes me money.
+
+Today that lives in WhatsApp messages and memory. This project turns it into an agent I can simply talk to:
+
+> "Jad wants a khaki troupe shirt size 8, he gave me 10 dollars."
+> The agent checks the live coop catalog. Size 8 isn't made for that shirt, so it suggests size 10 and, once I confirm, records the order and the payment. Jad now owes $5.
+
+## Architecture
+
+```
+ Chef (terminal)
+     |
+     v
+ agent.py  = MCP HOST  (OpenAI Agents SDK Agent + LLM)
+     |        contains the MCP CLIENT (MCPServerStdio)
+     |  MCP over stdio (JSON-RPC)
+     v
+ troupe_coop/server.py = MCP SERVER (FastMCP)
+     |-- check_coop_item ------> coop.scoutsduliban.org (live, read-only scraping)
+     |-- record_ledger_entry --> data/ledger.json (local)
+     '-- process_member_order -> calls the two tools above
+     resources: troupe://members, troupe://balances, troupe://coop-order,
+                troupe://members/{member}/statement
+```
+
+## The three tools
+
+| Category | Tool | What it does | Failure handling |
+|---|---|---|---|
+| **Data** | `check_coop_item(item, variant?)` | Looks up one item on the live coop site and returns its price, the variants offered (sizes, colours, unit…) and whether the requested variant exists. Read-only. | Returns `unavailable` with the closest sizes (e.g. the Chemise Troupe Kaki has no size 8, so it suggests 10), `needs_variant`, `ambiguous` with candidates, or `discontinued`. Raises a clear error when no item matches or the coop site is unreachable. |
+| **Action** | `record_ledger_entry(member, entry_type, amount_usd, description)` | Writes one `charge` or `payment` to a member's account and returns the new balance. A positive balance means the member owes the troupe; a negative one means they paid in advance and have credit. Never contacts the coop. | Unknown member (lists the roster), ambiguous member name, amount ≤ 0 or > $1000 (schema validation). Nothing is written on failure. |
+| **Orchestration** | `process_member_order(member, item, variant?, quantity, paid_now_usd)` | (1) validates the member, (2) calls `check_coop_item`, (3) if available, calls the ledger action to charge price × quantity, (4) records `paid_now_usd` as a payment. Returns the steps it took. | If the item or size isn't available, **nothing is recorded** and the reason and alternatives come back. An unknown member fails before any request reaches the coop site. |
+
+Read-only views are exposed as **MCP resources** (`@mcp.resource`), not tools. They don't count toward the three tools, and the host reads them as context on every model call:
+
+- `troupe://members`: the roster
+- `troupe://balances`: who owes what, and who has credit
+- `troupe://coop-order`: everything ordered, grouped by item and size, ready to bring to the coop (the coop takes cash only)
+- `troupe://members/{member}/statement`: one member's history
+
+The agent replies in the language the chef writes in (English, French or Arabizi). It keeps official coop item names in French and adds an English gloss when replying in English.
+
+## Setup
+
+Requires Python 3.11+ and an OpenAI API key.
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate          # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+copy .env.example .env          # then put your OPENAI_API_KEY in .env
+python scripts/reset_demo.py    # creates data/members.json + data/ledger.json from data/seed/
+```
+
+> **Antivirus or corporate proxy note.** If `pip install` fails with `InvalidChunkLength` or certificate errors (AVG and Avast intercept HTTPS), install with uv using the OS certificate store: `pip install uv`, then `uv pip install --system-certs -r requirements.txt`. The app itself uses `truststore`, so it trusts the same OS certificates.
+
+Optional: set `OPENAI_MODEL` in `.env`. If it isn't set, the Agents SDK default model is used.
+
+## Run
+
+```bash
+python agent.py --check        # starts the MCP server, lists tools/resources (no LLM, no key needed)
+python agent.py                # chat with the assistant
+python scripts/demo_tools.py   # calls every tool + failure case over stdio, no LLM
+```
+
+In the chat, every MCP tool call (`-> agent calls MCP tool …`) and every server response (`<- server returned …`) is printed. The server's own log lines (`[MCP server] …`) appear too, so the full round trip is visible. Example requests:
+
+- `Jad needs a khaki troupe shirt size 8`
+- `Maya wants a beret size 59 and a bague foulard`
+- `Karim gave me 20$ in advance`
+- `Who still owes money?`
+- `What do I need to buy from the coop?`
+- `Combien coûte la chemise troupe ?` (ambiguous: the agent asks whether you mean Bleue or Kaki)
+
+## Tests
+
+```bash
+pytest                         # 34 offline tests: coop HTML parsing, ledger, all 3 tools + resources via a FastMCP client
+set RUN_LIVE=1 && pytest tests/test_live.py   # optional: hits the real coop site
+```
+
+The offline tests use saved coop pages (`tests/fixtures/`), so they don't depend on the website. Failure cases covered:
+
+- size not offered
+- discontinued variant
+- ambiguous item name
+- item not found
+- coop site down
+- unknown member
+- negative or zero amounts
+- quantity 0
+- an order for an unavailable size leaves the ledger untouched
+
+## Project structure
+
+```
+agent.py                  MCP host/client (OpenAI Agents SDK)
+troupe_coop/server.py     FastMCP server: 3 tools + 4 resources
+troupe_coop/coop.py       read-only coop scraper (Odoo eCommerce HTML)
+troupe_coop/ledger.py     JSON ledger: members, charges, payments, balances
+data/seed/                demo roster (fictional members) and starting ledger
+scripts/reset_demo.py     restore demo data before recording
+scripts/demo_tools.py     no-LLM tool walkthrough including failure cases
+tests/                    pytest suite + saved coop HTML fixtures
+docs/part1_summary.md     Part 1: MCP article + Fetch server critique
+docs/reflection.md        reflection
+docs/demo_script.md       screencast script
+```
+
+## Design notes
+
+- **Read-only toward the coop.** The scraper only issues GET requests to public catalog pages. It never adds to the cart, fills in forms or places orders. Submitting the order stays the chef's job, on purpose. The coop's main domain allows crawling in `robots.txt`, responses are cached for 10 minutes, and the scraper sends an identifying User-Agent.
+- **Ledger, not order and payment tables.** A single append-only list of `charge` and `payment` entries keeps the Action tool single-purpose. It also handles both late payers and members who pay in advance (credit) with one rule: balance = charges − payments.
+- **Structured output.** Every tool returns a typed Pydantic model (FastMCP publishes the output schema) with a human-readable `message` plus machine-readable fields (`status`, `suggestions`, `candidates`, `balance_usd`, `steps`).
+- Member names in `data/seed/members.json` are fictional.
