@@ -21,7 +21,7 @@ Today that lives in WhatsApp messages and memory. This project turns it into an 
 | Configuration and setup instructions | this README ([Setup](#setup), [Run](#run)) |
 | Tests and example scripts, including failure cases | [tests/](tests/) (35 tests), [scripts/demo_tools.py](scripts/demo_tools.py) |
 | Live agent run (real transcript of the round trip) | [docs/example_session.md](docs/example_session.md) |
-| Screencast video (5-7 min) | **VIDEO LINK HERE** (script: [docs/demo_script.md](docs/demo_script.md)) |
+| Screencast video (5-7 min) | **VIDEO LINK HERE** (script: [docs/demo_script.md](docs/demo_script.md), about 5 min) |
 | Reflection (2 paragraphs) | [docs/reflection.md](docs/reflection.md) |
 
 ### Requirements checklist
